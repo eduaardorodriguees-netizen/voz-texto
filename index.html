@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voz para Texto</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2e7d32">
+<style>
+  body { font-family: sans-serif; margin: 0; padding: 16px; background: #f5f5f5; }
+  h1 { font-size: 20px; text-align: center; }
+  #texto { width: 100%; height: 40vh; font-size: 18px; padding: 12px;
+           box-sizing: border-box; border-radius: 12px; border: 1px solid #ccc; }
+  button { width: 100%; padding: 18px; margin-top: 12px; font-size: 18px;
+           border: none; border-radius: 12px; color: white; }
+  #gravar { background: #2e7d32; }
+  #gravar.ativo { background: #c62828; }
+  #copiar { background: #1565c0; }
+  #limpar { background: #757575; }
+  #status { text-align: center; margin-top: 8px; color: #555; }
+</style>
+</head>
+<body>
+  <h1>🎤 Voz para Texto</h1>
+  <textarea id="texto" placeholder="O texto aparece aqui..."></textarea>
+  <button id="gravar">Começar a falar</button>
+  <button id="copiar">Copiar texto</button>
+  <button id="limpar">Limpar</button>
+  <div id="status"></div>
+
+<script>
+  const Reconhecimento = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const texto = document.getElementById('texto');
+  const gravar = document.getElementById('gravar');
+  const status = document.getElementById('status');
+  let rec, ouvindo = false;
+
+  if (!Reconhecimento) {
+    status.textContent = 'Seu navegador não suporta reconhecimento de voz. Use o Chrome.';
+    gravar.disabled = true;
+  } else {
+    rec = new Reconhecimento();
+    rec.lang = 'pt-BR';
+    rec.continuous = true;
+    rec.interimResults = false;
+
+    rec.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          texto.value += (texto.value ? ' ' : '') + e.results[i][0].transcript.trim();
+        }
+      }
+    };
+    rec.onend = () => { if (ouvindo) rec.start(); };
+    rec.onerror = (e) => { status.textContent = 'Erro: ' + e.error; };
+  }
+
+  gravar.onclick = () => {
+    if (!ouvindo) {
+      rec.start(); ouvindo = true;
+      gravar.textContent = 'Parar'; gravar.classList.add('ativo');
+      status.textContent = 'Ouvindo...';
+    } else {
+      ouvindo = false; rec.stop();
+      gravar.textContent = 'Começar a falar'; gravar.classList.remove('ativo');
+      status.textContent = '';
+    }
+  };
+
+  document.getElementById('copiar').onclick = async () => {
+    await navigator.clipboard.writeText(texto.value);
+    status.textContent = 'Texto copiado!';
+  };
+
+  document.getElementById('limpar').onclick = () => {
+    texto.value = ''; status.textContent = '';
+  };
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+</body>
+</html>
